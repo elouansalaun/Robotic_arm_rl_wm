@@ -1,0 +1,34 @@
+<!--
+  Graspable objects. Each episode uses a single target object; the others are
+  parked on the floor far behind the robot,
+  outside the camera views. Sizes, masses and frictions are
+  overwritten at reset by simulation/scene.py, the values below are only the
+  nominal ones.
+  Distractors are low-saturation blocks used to create occlusions in the
+  perception experiments.
+-->
+<mujoco model="objects">
+  <worldbody>
+    <body name="obj_box" pos="-3.5 -0.6 0.03">
+      <freejoint name="obj_box_free"/>
+      <geom name="obj_box_geom" class="object" type="box" size="0.022 0.022 0.022" rgba="0.85 0.12 0.10 1"/>
+    </body>
+    <body name="obj_cylinder" pos="-3.5 -0.4 0.03">
+      <freejoint name="obj_cylinder_free"/>
+      <geom name="obj_cylinder_geom" class="object" type="cylinder" size="0.022 0.025" rgba="0.10 0.30 0.85 1"/>
+    </body>
+    <body name="obj_sphere" pos="-3.5 -0.2 0.03">
+      <freejoint name="obj_sphere_free"/>
+      <geom name="obj_sphere_geom" class="object" type="sphere" size="0.025" rgba="0.92 0.72 0.08 1"/>
+    </body>
+
+    <body name="distractor_0" pos="-3.5 0.2 0.06">
+      <freejoint name="distractor_0_free"/>
+      <geom name="distractor_0_geom" class="object" type="box" size="0.025 0.04 0.05" rgba="0.82 0.82 0.80 1"/>
+    </body>
+    <body name="distractor_1" pos="-3.5 0.4 0.07">
+      <freejoint name="distractor_1_free"/>
+      <geom name="distractor_1_geom" class="object" type="cylinder" size="0.03 0.06" rgba="0.55 0.55 0.57 1"/>
+    </body>
+  </worldbody>
+</mujoco>

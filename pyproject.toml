@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rwm"
+version = "0.1.0"
+description = "Robotic pick-and-place in MuJoCo: scripted IK control, SAC and MPC with a learned world model"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Elouan Salaun" }]
+dependencies = [
+    "mujoco>=3.2",
+    "numpy>=1.26",
+    "torch>=2.2",
+    "gymnasium>=1.0",
+    "stable-baselines3>=2.3",
+    "opencv-python-headless>=4.9",
+    "pyyaml",
+    "pandas",
+    "matplotlib",
+    "imageio",
+    "imageio-ffmpeg",
+    "tqdm",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "jupyter"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110

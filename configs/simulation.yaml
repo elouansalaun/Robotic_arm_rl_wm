@@ -1,0 +1,56 @@
+# Scene, low-level control and episode randomisation.
+# Units: metres, kilograms, radians.
+
+control:
+  frame_skip: 25            # 25 x 2 ms physics steps -> 20 Hz control
+  max_steps: 100            # 5 s episodes
+  max_tcp_step: 0.025       # TCP displacement per control step at |action| = 1
+  max_yaw_step: 0.15
+  workspace:                # limits applied to the commanded TCP position
+    x: [0.25, 0.80]
+    y: [-0.40, 0.40]
+    z: [0.438, 0.80]        # table top is at 0.42, fingertips stay above it
+  ik:
+    iterations: 3
+    damping: 0.05
+    rot_weight: 0.5
+
+home_tcp: [0.45, 0.0, 0.70]
+home_yaw: 0.0
+
+# training / validation distribution
+scenario:
+  object_kinds: [box, cylinder]
+  shapes:
+    box: {half_size: [0.018, 0.026]}
+    cylinder: {radius: [0.018, 0.026], half_height: [0.022, 0.030]}
+    sphere: {radius: [0.022, 0.028]}
+  mass: [0.05, 0.30]
+  friction: [0.6, 1.2]
+  yaw: [-0.785, 0.785]
+  object_x: [0.40, 0.62]
+  object_y: [-0.22, 0.22]
+  target_x: [0.40, 0.62]
+  target_y: [-0.22, 0.22]
+  min_separation: 0.15
+  n_distractors: 0
+
+# held-out conditions, each one overrides a few keys of `scenario`
+test_conditions:
+  nominal: {}
+  new_positions:
+    object_x: [0.62, 0.70]
+    object_y: [-0.30, 0.30]
+    target_x: [0.32, 0.40]
+    target_y: [-0.30, 0.30]
+  new_objects:
+    object_kinds: [box, sphere]
+    shapes:
+      box: {half_size: [0.015, 0.018], aspect: [1.5, 2.0]}
+      sphere: {radius: [0.022, 0.028]}
+  heavy_slippery:
+    mass: [0.30, 0.60]
+    friction: [0.30, 0.50]
+  clutter:
+    n_distractors: 2
+    distractor_distance: [0.07, 0.10]

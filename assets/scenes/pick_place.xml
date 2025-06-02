@@ -1,0 +1,69 @@
+<!--
+  Pick-and-place scene: table, 6-DOF arm, target platform, objects, cameras.
+  World frame: origin on the floor below the robot base, z up, x pointing
+  away from the robot across the table. Table top at z = 0.42.
+-->
+<mujoco model="pick_place">
+  <compiler angle="degree" autolimits="true"/>
+  <option timestep="0.002" integrator="implicitfast" cone="elliptic" impratio="10"/>
+
+  <statistic extent="1.5" center="0.4 0 0.5"/>
+  <visual>
+    <global offwidth="640" offheight="480" azimuth="150" elevation="-25"/>
+    <quality shadowsize="2048"/>
+    <map znear="0.01" zfar="4"/>
+    <headlight ambient="0.25 0.25 0.25" diffuse="0.4 0.4 0.4" specular="0 0 0"/>
+  </visual>
+
+  <default>
+    <default class="arm">
+      <joint damping="1.0" armature="0.1"/>
+      <geom contype="2" conaffinity="5" condim="3" rgba="0.82 0.82 0.84 1"/>
+      <general gaintype="fixed" biastype="affine"/>
+      <default class="finger">
+        <joint type="slide" range="0 0.045" damping="5" armature="0.01"/>
+      </default>
+      <default class="pad">
+        <geom type="box" size="0.03 0.006 0.012" condim="4" friction="1.2 0.02 0.0001"
+              solref="0.004 1" solimp="0.95 0.99 0.001" rgba="0.15 0.15 0.16 1"/>
+      </default>
+    </default>
+    <default class="object">
+      <geom contype="4" conaffinity="7" condim="4" friction="1.0 0.01 0.0001"/>
+    </default>
+    <default class="static">
+      <geom contype="1" conaffinity="0" condim="3" friction="1.0 0.005 0.0001"/>
+    </default>
+  </default>
+
+  <asset>
+    <texture name="floor_tex" type="2d" builtin="checker" rgb1="0.32 0.33 0.35" rgb2="0.28 0.29 0.31" width="256" height="256"/>
+    <material name="floor_mat" texture="floor_tex" texrepeat="6 6" reflectance="0.05"/>
+    <material name="table_mat" rgba="0.62 0.60 0.57 1" reflectance="0.02"/>
+    <material name="target_mat" rgba="0.18 0.68 0.30 1"/>
+  </asset>
+
+  <include file="../robot/arm6.xml"/>
+  <include file="../objects/objects.xml"/>
+
+  <worldbody>
+    <light name="key" directional="true" pos="0.5 -0.6 2.0" dir="-0.1 0.3 -1" diffuse="0.65 0.65 0.65" castshadow="true"/>
+    <light name="fill" pos="1.4 0.6 1.6" dir="-0.6 -0.3 -1" diffuse="0.25 0.25 0.25" castshadow="false"/>
+
+    <geom name="floor" type="plane" size="3 3 0.05" material="floor_mat" class="static"/>
+    <geom name="table" type="box" size="0.5 0.6 0.21" pos="0.45 0 0.21" material="table_mat" class="static"/>
+
+    <body name="target" mocap="true" pos="0.5 0.2 0.43">
+      <geom name="target_geom" type="box" size="0.06 0.06 0.01" material="target_mat" class="static"/>
+    </body>
+
+    <body name="workspace_center" pos="0.45 0 0.55"/>
+
+    <!-- RGB-D camera used by the perception module (fixed, looking at the table) -->
+    <camera name="front_cam" pos="1.0 0 0.95" xyaxes="0 1 0 -0.728 0 0.686" fovy="60"/>
+    <!-- cameras used for videos only -->
+    <camera name="overview" pos="1.25 -0.95 1.15" mode="targetbody" target="workspace_center" fovy="40"/>
+    <camera name="side" pos="0.5 -1.3 0.75" mode="targetbody" target="workspace_center" fovy="45"/>
+  </worldbody>
+
+</mujoco>
