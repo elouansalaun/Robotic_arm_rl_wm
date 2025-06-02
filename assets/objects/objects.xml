@@ -19,7 +19,8 @@
     </body>
     <body name="obj_sphere" pos="-3.5 -0.2 0.03">
       <freejoint name="obj_sphere_free"/>
-      <geom name="obj_sphere_geom" class="object" type="sphere" size="0.025" rgba="0.92 0.72 0.08 1"/>
+      <!-- rubber ball: rolling resistance, otherwise it never comes to rest on the platform -->
+      <geom name="obj_sphere_geom" class="object" type="sphere" size="0.025" condim="6" friction="1.0 0.01 0.002" rgba="0.92 0.72 0.08 1"/>
     </body>
 
     <body name="distractor_0" pos="-3.5 0.2 0.06">

@@ -87,9 +87,9 @@
   </equality>
 
   <actuator>
-    <general name="act1" class="arm" joint="joint1" ctrlrange="-2.967 2.967" forcerange="-150 150" gainprm="900" biasprm="0 -900 -70"/>
-    <general name="act2" class="arm" joint="joint2" ctrlrange="-1.047 2.007" forcerange="-200 200" gainprm="1400" biasprm="0 -1400 -90"/>
-    <general name="act3" class="arm" joint="joint3" ctrlrange="-2.094 2.618" forcerange="-150 150" gainprm="900" biasprm="0 -900 -55"/>
+    <general name="act1" class="arm" joint="joint1" ctrlrange="-2.967 2.967" forcerange="-150 150" gainprm="1800" biasprm="0 -1800 -67"/>
+    <general name="act2" class="arm" joint="joint2" ctrlrange="-1.047 2.007" forcerange="-200 200" gainprm="2800" biasprm="0 -2800 -86"/>
+    <general name="act3" class="arm" joint="joint3" ctrlrange="-2.094 2.618" forcerange="-150 150" gainprm="1800" biasprm="0 -1800 -53"/>
     <general name="act4" class="arm" joint="joint4" ctrlrange="-3.1416 3.1416" forcerange="-40 40" gainprm="150" biasprm="0 -150 -8"/>
     <general name="act5" class="arm" joint="joint5" ctrlrange="-2.182 2.182" forcerange="-40 40" gainprm="150" biasprm="0 -150 -8"/>
     <general name="act6" class="arm" joint="joint6" ctrlrange="-3.1416 3.1416" forcerange="-30 30" gainprm="80" biasprm="0 -80 -4"/>

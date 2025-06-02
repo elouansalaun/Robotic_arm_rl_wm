@@ -13,8 +13,6 @@ interface, so their results are directly comparable.
 
 from __future__ import annotations
 
-import time
-
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -97,7 +95,6 @@ class PickPlaceEnv(gym.Env):
 
     def step(self, action):
         a = np.clip(np.asarray(action, dtype=np.float64), -1.0, 1.0)
-        t0 = time.perf_counter()
 
         p_tcp, _ = self.scene.tcp_pose()
         yaw = self.true_state[SLICES["tcp_yaw"]][0]
@@ -108,7 +105,6 @@ class PickPlaceEnv(gym.Env):
         self.scene.step(np.append(q_cmd, grip_cmd), self.frame_skip)
         self.steps += 1
 
-        prev_state = self.true_state
         self.true_state = read_state(self.scene)
         contacts = self.scene.contacts()
         self.n_collision_steps += int(contacts["collisions"] > 0)
@@ -123,10 +119,7 @@ class PickPlaceEnv(gym.Env):
         obj_z = self.true_state[SLICES["obj_pos"]][2]
         terminated = bool(obj_z < TABLE_Z - 0.03)  # object fell off the table
         truncated = self.steps >= self.max_steps
-        info = self._info(contacts, success)
-        info["prev_state"] = prev_state
-        info["step_time"] = time.perf_counter() - t0
-        return self._observe(), reward, terminated, truncated, info
+        return self._observe(), reward, terminated, truncated, self._info(contacts, success)
 
     def render(self):
         import mujoco
@@ -146,13 +139,12 @@ class PickPlaceEnv(gym.Env):
         """Ground-truth state (what the world model is trained on)."""
         return self.true_state.copy()
 
-    def observed_state(self) -> np.ndarray:
-        if self.state_estimator is None:
-            return self.true_state.copy()
-        return self.state_estimator.estimate(self.scene, self.true_state)
-
     def _observe(self) -> np.ndarray:
-        return build_observation(self.observed_state(), self.task)
+        if self.state_estimator is None:
+            return build_observation(self.true_state, self.task)
+        # called once per step: the estimator keeps track of the object between frames
+        estimated = self.state_estimator.estimate(self.scene, self.true_state)
+        return build_observation(estimated, self.state_estimator.task())
 
     def _is_success(self, contacts: dict) -> bool:
         s = self.true_state
@@ -168,6 +160,7 @@ class PickPlaceEnv(gym.Env):
             "collisions": contacts["collisions"],
             "collision_steps": self.n_collision_steps,
             "grasped": contacts["finger_left"] and contacts["finger_right"],
+            "finger_contacts": (contacts["finger_left"], contacts["finger_right"]),
             "place_error": float(np.linalg.norm(obj[:2] - self.task[:2])),
             "max_lift": self.max_lift,
             "object_kind": self.scene.scenario.object_kind,

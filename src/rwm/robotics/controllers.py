@@ -8,6 +8,7 @@ import numpy as np
 
 from rwm.environments.state import SLICES, STATE_DIM, TASK_DIM
 from rwm.robotics.kinematics import ArmKinematics, top_down_rotation, wrap_half_pi
+from rwm.simulation.scene import FINGER_TRAVEL, PAD_OFFSET
 
 
 class CartesianController:
@@ -89,6 +90,7 @@ class ScriptedPickPlace:
         release_steps: int = 4,
         z_min: float = 0.438,
         max_retries: int = 2,
+        grasp_margin: float = 0.035,
     ):
         self.dt = dt
         self.max_tcp_step = max_tcp_step
@@ -100,6 +102,7 @@ class ScriptedPickPlace:
         self.release_steps = release_steps
         self.z_min = z_min
         self.max_retries = max_retries
+        self.grasp_margin = grasp_margin
         self.reset()
 
     @classmethod
@@ -159,8 +162,12 @@ class ScriptedPickPlace:
     # ------------------------------------------------------------- control
     def act(self, obs: np.ndarray) -> np.ndarray:
         state, task = split_observation(np.asarray(obs, dtype=float))
-        grip_open = self.phase in ("approach", "descend", "release", "retreat", "done")
-        grip = 1.0 if grip_open else -1.0
+        if self.phase in ("approach", "descend"):
+            grip = self._preshape(task)
+        elif self.phase in ("release", "retreat", "done"):
+            grip = 1.0
+        else:
+            grip = -1.0
 
         if self.phase in ("close", "release"):
             self.counter += 1
@@ -199,6 +206,12 @@ class ScriptedPickPlace:
                        "transport": "lower", "lower": "release", "retreat": "done"}[self.phase]
                 self._advance(nxt)
         return np.clip(a, -1.0, 1.0)
+
+    def _preshape(self, task) -> float:
+        """Open just enough for the object (keeps the fingers away from neighbours)."""
+        opening = min(2 * task[4] + self.grasp_margin, 2 * PAD_OFFSET + 2 * FINGER_TRAVEL)
+        travel = 0.5 * (opening - 2 * PAD_OFFSET)
+        return float(np.clip(2 * travel / FINGER_TRAVEL - 1.0, -1.0, 1.0))
 
     def _hold(self, state, grip: float) -> np.ndarray:
         a = np.zeros(5)
