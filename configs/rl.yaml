@@ -1,0 +1,24 @@
+# SAC on the low-dimensional observation (state + task), Stable-Baselines3.
+
+total_timesteps: 400000
+learning_starts: 5000
+buffer_size: 400000
+batch_size: 256
+learning_rate: 3.0e-4
+gamma: 0.98
+tau: 0.005
+train_freq: 1
+gradient_steps: 1
+ent_coef: auto
+net_arch: [256, 256]
+normalize_obs: true
+
+# demonstrations from the scripted controller (0 = pure SAC). They are kept in
+# a separate buffer and make up `demo_fraction` of every training batch.
+demo_episodes: 0
+demo_action_noise: 0.1
+demo_fraction: 0.5
+
+eval_freq: 10000           # environment steps between validation runs
+n_eval_scenarios: 40       # fixed validation scenarios (seeded, see scripts/train_rl.py)
+checkpoint_fractions: [0.25, 0.5]   # extra snapshots kept for data collection
