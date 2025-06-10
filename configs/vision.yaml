@@ -1,0 +1,55 @@
+# Fixed RGB-D camera and colour/depth based object localisation.
+
+camera:
+  name: front_cam
+  width: 480
+  height: 360
+  depth_filter: 5             # median filter size applied to the depth map (1 = off)
+
+segmentation:
+  # HSV thresholds (OpenCV ranges: H in [0, 180), S and V in [0, 255])
+  min_saturation: 90
+  min_value: 40
+  target_hue: [40, 85]        # green platform
+  min_height: 0.004           # points less than 4 mm above the table are table/shadow
+  max_height: 0.15
+  roi_x: [0.25, 0.85]         # workspace, world frame
+  roi_y: [-0.45, 0.45]
+  min_pixels: 30
+  open_kernel: 3
+
+pose:
+  top_slice: 0.006            # points within 6 mm of the highest point form the top face
+  min_top_points: 8
+
+tracking:
+  attach_distance: 0.04       # object considered held when TCP is this close and the fingers are closed
+  velocity_smoothing: 0.5
+  min_visible_fraction: 0.35  # partial views (occlusion) below this are not trusted
+
+# sensor imperfections used in the robustness experiments
+noise:
+  clean:
+    depth_sigma: 0.0
+    depth_sigma_quadratic: 0.0
+    depth_dropout: 0.0
+    rgb_sigma: 0.0
+    lighting: false
+  realistic:
+    depth_sigma: 0.001          # metres, plus a term growing with z^2 (structured-light sensor)
+    depth_sigma_quadratic: 0.0025
+    depth_dropout: 0.01
+    rgb_sigma: 4.0              # pixel intensity units
+    lighting: false
+  lighting:
+    depth_sigma: 0.001
+    depth_sigma_quadratic: 0.0025
+    depth_dropout: 0.01
+    rgb_sigma: 4.0
+    lighting: true
+  heavy:
+    depth_sigma: 0.003
+    depth_sigma_quadratic: 0.006
+    depth_dropout: 0.05
+    rgb_sigma: 10.0
+    lighting: true
