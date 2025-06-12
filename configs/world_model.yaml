@@ -1,0 +1,27 @@
+# Transition data and dynamics ensemble.
+
+data:
+  # episodes per behaviour policy (see scripts/collect_data.py)
+  scripted: 100            # scripted controller, no noise
+  scripted_noisy: 250      # Gaussian action noise, sigma drawn in [0.1, 0.5]
+  scripted_bursts: 250     # scripted + bursts of random actions (failed grasps, pushes, drops)
+  random: 100              # smoothed random actions
+  sac_per_checkpoint: 80   # per SAC checkpoint (25 %, 50 %, final), sigma = 0.1
+  split: [0.8, 0.1, 0.1]   # train / validation / test, by episode
+  split_seed: 0
+
+model:
+  n_members: 5
+  hidden: 200
+  n_layers: 3
+
+training:
+  lr: 1.0e-3
+  weight_decay: 1.0e-5
+  batch_size: 256
+  max_epochs: 150
+  patience: 12
+  bootstrap: true
+  collision_weight: 0.1
+  collision_pos_weight: 5.0
+  seed: 0

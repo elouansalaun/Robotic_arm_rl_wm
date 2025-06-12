@@ -1,0 +1,16 @@
+# CEM model predictive control on the learned ensemble.
+
+horizon: 10              # 0.5 s look-ahead
+population: 256
+elites: 25
+iterations: 3
+init_std: 0.6
+min_std: 0.05
+momentum: 0.1
+discount: 0.95
+collision_weight: 1.0
+action_cost: 0.005
+
+# weight of the ensemble disagreement in the planning cost
+uncertainty_weight: 0.0          # plain MPC
+uncertainty_weight_penalized: 0.05
