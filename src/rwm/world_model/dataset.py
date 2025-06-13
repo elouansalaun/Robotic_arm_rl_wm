@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 
@@ -121,9 +122,16 @@ class RandomController:
         return self.a.copy()
 
 
-def record_episodes(env, controller, n_episodes: int, source: str, scenarios=None) -> TransitionData:
-    """Run `controller` and record every transition with the ground-truth state."""
+def record_episodes(env, controller, n_episodes: int, source: str, scenarios=None,
+                    steps_after_success: int | None = None, log_every: int = 0) -> TransitionData:
+    """Run `controller` and record every transition with the ground-truth state.
+
+    steps_after_success: end the episode this many steps after the first
+    success (the release and retreat are still recorded, the idle hovering
+    that follows is not). Useful for slow controllers such as MPC.
+    """
     buf = {k: [] for k in ("states", "actions", "next_states", "tasks", "rewards", "contacts", "episodes", "steps")}
+    t_start, n_success = time.time(), 0
     for ep in range(n_episodes):
         options = {"scenario": scenarios[ep]} if scenarios is not None else None
         obs, info = env.reset(options=options)
@@ -144,6 +152,15 @@ def record_episodes(env, controller, n_episodes: int, source: str, scenarios=Non
             buf["steps"].append(t)
             s, t = s_next, t + 1
             done = terminated or truncated
+            first = info["first_success_step"]
+            if steps_after_success is not None and first is not None and t >= first + steps_after_success:
+                done = True
+        n_success += int(info["first_success_step"] is not None)
+        if log_every and (ep + 1) % log_every == 0:
+            elapsed = time.time() - t_start
+            print(f"  [{source}] {ep + 1}/{n_episodes} episodes, success {n_success / (ep + 1):.2f}, "
+                  f"{elapsed / 60:.1f} min elapsed, ~{elapsed / (ep + 1) * (n_episodes - ep - 1) / 60:.1f} min left",
+                  flush=True)
     arr = {k: np.asarray(v) for k, v in buf.items()}
     arr["states"] = arr["states"].astype(np.float32).reshape(-1, STATE_DIM)
     arr["next_states"] = arr["next_states"].astype(np.float32).reshape(-1, STATE_DIM)
