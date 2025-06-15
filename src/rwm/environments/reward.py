@@ -5,8 +5,9 @@ same function can be evaluated by the MPC planner on states predicted by the
 world model. Works on numpy arrays and torch tensors, batched or not.
 
 Shaping, from worst to best situation:
-    reach the object < hold it above the table < carry it over the target
-    < put it down on the target < open the gripper < move the gripper away
+    reach the object < close the fingers on it < hold it above the table
+    < carry it over the target < put it down on the target < open the
+    gripper < move the gripper away
 Before the object is on the platform the reward pulls the gripper towards
 the object and the object towards the target; once it is on the platform,
 staying around it is no longer rewarded (the fingers would end up scraping
@@ -23,6 +24,7 @@ from rwm.simulation.scene import TABLE_Z
 PLACE_XY_TOL = 0.04   # object centre within 4 cm of the platform centre
 PLACE_Z_TOL = 0.01
 NEAR_DIST = 0.05
+GRASP_DIST = 0.02     # TCP within 2 cm of the object centre
 
 
 def _is_torch(x) -> bool:
@@ -64,11 +66,15 @@ def reward_terms(state, task):
     held = lifted * near
     on_target = _float((d_xy < PLACE_XY_TOL) & (xp.abs(obj[..., 2] - place_z) < PLACE_Z_TOL), d_xy)
     released = _float(grip > 2 * half_w + 0.01, grip)
+    # fingers closed down to the object width around its centre: a grasp, seen from the state only
+    closed_on_object = (grip < 2 * half_w + 0.006) & (grip > 2 * half_w - 0.012)
+    grasped = _float(closed_on_object & (d_reach < GRASP_DIST), grip)
     tilt = 1.0 - object_up_axis_z(state[..., SLICES["obj_rot"]])
     retreat = xp.clip((tcp[..., 2] - obj[..., 2] - 0.03) / 0.05, 0.0, 1.0)
 
     return dict(
         reach=1.0 - xp.tanh(5.0 * d_reach),
+        grasped=grasped,
         held=held,
         move=1.0 - xp.tanh(5.0 * d_xy),
         on_target=on_target,
@@ -81,8 +87,8 @@ def reward_terms(state, task):
 
 def pick_place_reward(state, task, action=None, action_cost: float = 0.005):
     t = reward_terms(state, task)
-    before = 0.2 * t["reach"] + 0.3 * t["held"] + 0.5 * t["held"] * t["move"]
-    after = 0.6 + 0.5 * t["move"] + t["released"] * (0.5 + 0.3 * t["retreat"])
+    before = 0.2 * t["reach"] + 0.1 * t["grasped"] + 0.3 * t["held"] + 0.5 * t["held"] * t["move"]
+    after = 0.7 + 0.5 * t["move"] + t["released"] * (0.5 + 0.3 * t["retreat"])
     r = (1.0 - t["on_target"]) * before + t["on_target"] * after - 0.2 * t["tilt"]
     if action is not None:
         r = r - action_cost * (action[..., :4] ** 2).sum(-1)

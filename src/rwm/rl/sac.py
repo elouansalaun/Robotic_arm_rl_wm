@@ -157,18 +157,34 @@ def save_policy(model: SAC, path_stem: Path) -> None:
         np.savez(f"{path_stem}_obs_stats.npz", mean=venv.obs_rms.mean, var=venv.obs_rms.var)
 
 
+def _open_csv(path: Path, header: list[str], resume: bool):
+    """Open a log file, appending to it when a run is resumed. Returns (file, writer, last wall time)."""
+    offset = 0.0
+    if resume and path.exists() and path.stat().st_size > 0:
+        import pandas as pd
+
+        previous = pd.read_csv(path)
+        offset = float(previous.wall_time.max()) if len(previous) else 0.0
+        f = open(path, "a", newline="")
+        return f, csv.writer(f), offset, previous
+    f = open(path, "w", newline="")
+    writer = csv.writer(f)
+    writer.writerow(header)
+    return f, writer, offset, None
+
+
 class TrainingLogger(BaseCallback):
     """Writes one CSV row per finished training episode."""
 
-    def __init__(self, path: Path):
+    def __init__(self, path: Path, resume: bool = False):
         super().__init__()
         self.path = path
-        self.t0 = time.time()
+        self.resume = resume
 
     def _on_training_start(self) -> None:
-        self.file = open(self.path, "w", newline="")
-        self.writer = csv.writer(self.file)
-        self.writer.writerow(["timestep", "wall_time", "return", "length", "success", "collision_steps", "place_error"])
+        header = ["timestep", "wall_time", "return", "length", "success", "collision_steps", "place_error"]
+        self.file, self.writer, offset, _ = _open_csv(self.path, header, self.resume)
+        self.t0 = time.time() - offset
 
     def _on_step(self) -> bool:
         for info in self.locals["infos"]:
@@ -187,20 +203,23 @@ class TrainingLogger(BaseCallback):
 class ValidationCallback(BaseCallback):
     """Evaluates the deterministic policy on a fixed set of scenarios."""
 
-    def __init__(self, env: PickPlaceEnv, scenarios: list, freq: int, run_dir: Path, checkpoints: list[int]):
+    def __init__(self, env: PickPlaceEnv, scenarios: list, freq: int, run_dir: Path, checkpoints: list[int],
+                 resume: bool = False):
         super().__init__()
         self.env = env
         self.scenarios = scenarios
         self.freq = freq
         self.run_dir = run_dir
         self.checkpoints = set(checkpoints)
+        self.resume = resume
         self.best = -np.inf
-        self.t0 = time.time()
 
     def _on_training_start(self) -> None:
-        self.file = open(self.run_dir / "validation.csv", "w", newline="")
-        self.writer = csv.writer(self.file)
-        self.writer.writerow(["timestep", "wall_time", "success_rate", "mean_return", "collision_steps", "place_error"])
+        header = ["timestep", "wall_time", "success_rate", "mean_return", "collision_steps", "place_error"]
+        self.file, self.writer, offset, previous = _open_csv(self.run_dir / "validation.csv", header, self.resume)
+        self.t0 = time.time() - offset
+        if previous is not None and len(previous):
+            self.best = float((previous.success_rate + 1e-3 * previous.mean_return).max())
 
     def _on_step(self) -> bool:
         if self.num_timesteps in self.checkpoints:
@@ -227,3 +246,37 @@ class ValidationCallback(BaseCallback):
 
     def _on_training_end(self) -> None:
         self.file.close()
+
+
+class ResumeCheckpoint(BaseCallback):
+    """Full training state (weights, optimisers, replay buffer, normalisation) every `freq` steps.
+
+    Background jobs are limited in time here, so a run is split in pieces:
+    scripts/train_rl.py --resume picks up from the last of these snapshots.
+    """
+
+    def __init__(self, run_dir: Path, freq: int):
+        super().__init__()
+        self.dir = run_dir / "resume"
+        self.freq = freq
+
+    def _on_step(self) -> bool:
+        if self.num_timesteps % self.freq == 0:
+            save_training_state(self.model, self.dir)
+        return True
+
+
+def save_training_state(model: SAC, directory: Path) -> None:
+    directory.mkdir(parents=True, exist_ok=True)
+    model.save(directory / "model.zip")
+    model.save_replay_buffer(directory / "replay_buffer.pkl")
+    model.get_vec_normalize_env().save(str(directory / "vecnormalize.pkl"))
+    (directory / "timesteps.txt").write_text(str(model.num_timesteps))
+
+
+def load_training_state(directory: Path, sim_cfg: dict, seed: int) -> SAC:
+    venv = make_vec_env(sim_cfg, seed, normalize=False)
+    venv = VecNormalize.load(str(directory / "vecnormalize.pkl"), venv)
+    model = SAC.load(directory / "model.zip", env=venv, device="cpu")
+    model.load_replay_buffer(directory / "replay_buffer.pkl")
+    return model
