@@ -1,0 +1,7 @@
+condition,observation,success_rate,place_error_mm,episodes
+nominal,ground_truth,1.0,1.823,30
+nominal,clean,0.967,2.759,30
+nominal,realistic,0.967,3.287,30
+nominal,lighting,1.0,3.134,30
+nominal,heavy,1.0,2.346,30
+clutter,realistic,0.867,3.305,30

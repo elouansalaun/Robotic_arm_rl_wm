@@ -9,6 +9,7 @@
 
 import argparse
 
+import cv2
 import imageio.v2 as imageio
 import numpy as np
 import pandas as pd
@@ -34,6 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--n-frames", type=int, default=100)
     parser.add_argument("--n-episodes", type=int, default=30)
+    parser.add_argument("--frames-only", action="store_true", help="skip the closed-loop episodes")
     args = parser.parse_args()
 
     sim_cfg, vision_cfg = load_config("simulation"), load_config("vision")
@@ -46,11 +48,16 @@ def main():
     camera = RGBDCamera(scene.model, cam_cfg["name"], cam_cfg["width"], cam_cfg["height"])
     detector = ObjectDetector(vision_cfg)
     tables, examples = [], []
-    for condition, noise in FRAME_CASES:
+    for k, (condition, noise) in enumerate(FRAME_CASES):
         scenarios = test_set(sim_cfg, condition)[: args.n_frames]
-        df, frames = localisation_errors(scene, camera, detector, vision_cfg, noise, scenarios, keep_frames=1)
+        # a different scene in each panel of the example figure
+        df, frames = localisation_errors(scene, camera, detector, vision_cfg, noise, scenarios, example=2 * k + 1)
         df["condition"] = condition
         tables.append(df)
+        for f in frames:
+            cv2.rectangle(f, (0, 0), (f.shape[1], 26), (250, 250, 248), -1)
+            cv2.putText(f, f"{condition.replace('_', ' ')} / {noise} noise", (8, 18), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (20, 20, 20), 1, cv2.LINE_AA)
         examples += frames
         print(f"{condition:12s} {noise:10s} xy median {1e3 * df.xy_error.median():.1f} mm")
     camera.close()
@@ -61,6 +68,8 @@ def main():
     print(summary.to_string())
     grid = np.concatenate([np.concatenate(examples[i:i + 3], axis=1) for i in range(0, 6, 3)], axis=0)
     imageio.imwrite(out / "detections.png", grid)
+    if args.frames_only:
+        return
 
     # ------------------------------------------------------------ closed loop
     rows = []

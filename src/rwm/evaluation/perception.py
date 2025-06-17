@@ -24,7 +24,8 @@ def yaw_error(det_yaw: float, R_obj: np.ndarray, scenario) -> float:
 
 
 def localisation_errors(scene, camera, detector, vision_cfg: dict, noise: str, scenarios, seed: int = 0,
-                        keep_frames: int = 0):
+                        example: int | None = None):
+    """Per-frame errors; `example` is the index of a frame returned with its overlay."""
     rng = np.random.default_rng(seed)
     noise_cfg = vision_cfg["noise"][noise]
     sensor = SensorNoise(noise_cfg, rng)
@@ -55,7 +56,7 @@ def localisation_errors(scene, camera, detector, vision_cfg: dict, noise: str, s
         if target is not None:
             row["target_error"] = float(np.linalg.norm(target - scene.target_position()))
         rows.append(row)
-        if i < keep_frames:
+        if i == example:
             frames.append(draw_detection(rgb, mask, det, camera, scene))
     if lighting is not None:
         lighting.restore()
@@ -65,7 +66,9 @@ def localisation_errors(scene, camera, detector, vision_cfg: dict, noise: str, s
 def draw_detection(rgb, mask, det, camera, scene) -> np.ndarray:
     img = rgb.copy()
     if mask is not None:
-        img[mask] = (0.45 * img[mask] + 0.55 * np.array([255, 0, 255])).astype(np.uint8)
+        # outline of the segmented region instead of a fill, the object colour stays visible
+        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(img, contours, -1, (255, 0, 255), 1)
     if det is not None:
         c = det.position
         axis = np.array([np.cos(det.yaw), np.sin(det.yaw), 0.0]) * 0.05

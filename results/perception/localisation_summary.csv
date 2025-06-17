@@ -1,0 +1,7 @@
+condition,noise,detection_rate,xy_error_median_mm,xy_error_p95_mm,z_error_median_mm,yaw_error_median_deg,yaw_error_p95_deg,width_error_median_mm,target_error_median_mm
+nominal,clean,1.0,0.75,1.33,0.05,0.0,0.42,1.42,0.96
+nominal,realistic,1.0,0.78,1.6,0.12,1.05,2.8,1.38,0.95
+nominal,lighting,1.0,0.74,1.48,0.12,0.61,2.19,1.4,0.93
+nominal,heavy,1.0,0.88,1.78,0.13,1.61,5.67,1.66,0.68
+new_objects,realistic,1.0,1.18,2.74,1.3,0.82,2.69,7.38,0.85
+clutter,realistic,0.99,0.86,37.71,0.11,0.75,14.0,1.67,1.02
