@@ -46,7 +46,7 @@ def collect_sac(sim_cfg, cfg, seed, run_dir: Path):
 
     env = PickPlaceEnv(sim_cfg, seed=seed + 2)
     names = sorted(p.stem.replace("_obs_stats", "") for p in run_dir.glob("checkpoint_*_obs_stats.npz"))
-    names.append("model")
+    names.append("model" if (run_dir / "model.zip").exists() else "best")
     parts = []
     for i, name in enumerate(names):
         policy = SACController.load(run_dir, name)
