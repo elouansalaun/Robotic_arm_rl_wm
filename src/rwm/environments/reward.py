@@ -26,6 +26,7 @@ from rwm.simulation.scene import TABLE_Z
 
 PLACE_XY_TOL = 0.04   # object centre within 4 cm of the platform centre
 PLACE_Z_TOL = 0.01
+REST_SPEED = 0.05     # m/s, same threshold as the success test
 NEAR_DIST = 0.05
 GRASP_DIST = 0.02     # TCP within 2 cm of the object centre
 
@@ -44,6 +45,10 @@ def _backend(x):
 
 def _norm(x):
     return x.norm(dim=-1) if _is_torch(x) else np.linalg.norm(x, axis=-1)
+
+
+def _sigmoid(x):
+    return 1.0 / (1.0 + (-x).exp()) if _is_torch(x) else 1.0 / (1.0 + np.exp(-x))
 
 
 def _float(cond, like):
@@ -67,7 +72,16 @@ def reward_terms(state, task):
     lifted = xp.clip((lift - 0.005) / 0.015, 0.0, 1.0)
     near = _float(d_reach < NEAR_DIST, d_reach)
     held = lifted * near
-    on_target = _float((d_xy < PLACE_XY_TOL) & (xp.abs(obj[..., 2] - place_z) < PLACE_Z_TOL), d_xy)
+    # "On target" means resting on the platform: an object thrown across it at the right
+    # height does not count (MPC learned to let go in flight and the cylinders rolled away).
+    # The thresholds are smooth: on predicted states, a hard 1 cm / 5 cm/s test was almost
+    # never met and the planner hovered just above the platform.
+    speed = _norm(state[..., SLICES["obj_linvel"]])
+    on_target = (
+        _sigmoid((PLACE_XY_TOL - d_xy) / 0.004)
+        * _sigmoid((PLACE_Z_TOL - xp.abs(obj[..., 2] - place_z)) / 0.002)
+        * _sigmoid((REST_SPEED - speed) / 0.01)
+    )
     released = _float(grip > 2 * half_w + 0.01, grip)
     # fingers closed down to the object width around its centre: a grasp, seen from the state only
     closed_on_object = (grip < 2 * half_w + 0.006) & (grip > 2 * half_w - 0.012)

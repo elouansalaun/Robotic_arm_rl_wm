@@ -43,7 +43,8 @@ def main():
             rows = evaluate_controller(env, mpc, scenarios, dict(condition=condition, controller="mpc",
                                                                  uncertainty_weight=w, seed=0))
             df = pd.DataFrame(rows)
-            df.to_csv(episodes_file, mode="a", header=not episodes_file.exists(), index=False)
+            done = pd.concat([done, df], ignore_index=True)
+            done.to_csv(episodes_file, index=False)
             print(f"{condition:15s} weight {w:<5g} success {df.success.mean():.2f} "
                   f"uncertainty {df.mean_uncertainty.mean():.2f}", flush=True)
 

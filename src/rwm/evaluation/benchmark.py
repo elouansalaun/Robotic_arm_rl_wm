@@ -13,12 +13,12 @@ from rwm.planning.cem import CEMPlanner, MPCController
 from rwm.robotics.controllers import ScriptedPickPlace
 
 PLANNER_KEYS = ("horizon", "population", "elites", "iterations", "init_std", "min_std", "momentum", "discount",
-                "collision_weight", "action_cost")
+                "collision_weight", "action_cost", "noise_correlation", "keep_elites", "execute")
 
 
 def build_planner(model, plan_cfg: dict, uncertainty_weight: float, seed: int = 0) -> CEMPlanner:
     return CEMPlanner(model, uncertainty_weight=uncertainty_weight, seed=seed,
-                      **{k: plan_cfg[k] for k in PLANNER_KEYS})
+                      **{k: plan_cfg[k] for k in PLANNER_KEYS if k in plan_cfg})
 
 
 def make_controller(name: str, env, sac_run: Path | None = None, world_model: Path | None = None, seed: int = 0):

@@ -60,7 +60,9 @@ def main():
                 ctrl = make_controller(name, env, sac_run=run, world_model=args.world_model, seed=seed)
                 rows = evaluate_controller(env, ctrl, scenarios, dict(condition=condition, controller=name, seed=seed))
                 df = pd.DataFrame(rows)
-                df.to_csv(episodes_file, mode="a", header=not episodes_file.exists(), index=False)
+                # rewrite the whole file: controllers do not all report the same columns
+                done = pd.concat([done, df], ignore_index=True)
+                done.to_csv(episodes_file, index=False)
                 print(f"{condition:15s} {name:9s} seed {seed}: success {df.success.mean():.2f}  "
                       f"collisions {df.collision_steps.mean():.2f}  act {df.act_time_ms.mean():.1f} ms", flush=True)
         if env.state_estimator is not None:

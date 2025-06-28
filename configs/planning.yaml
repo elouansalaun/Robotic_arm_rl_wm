@@ -10,6 +10,9 @@ momentum: 0.1
 discount: 0.95
 collision_weight: 1.0
 action_cost: 0.005
+noise_correlation: 0.8   # AR(1) sampling noise in time (iCEM); 0 = white noise
+keep_elites: 0.3         # fraction of elites carried to the next iteration / control step
+execute: mean            # first action of the elite mean ("best" exploits model errors: 7/12 vs 10/12)
 
 # weight of the ensemble disagreement in the planning cost
 uncertainty_weight: 0.0          # plain MPC

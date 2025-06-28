@@ -10,6 +10,13 @@ At every control step:
 Only the first action is executed, then the planner starts again from the
 new observation (receding horizon). The previous solution, shifted by one
 step, warm-starts the next optimisation.
+
+Two changes from iCEM (Pinneri et al., 2020) matter here: the sampling noise
+is correlated in time, so that coherent motions ("go down, then hold") are
+actually sampled, and a fraction of the elites is carried over to the next
+iteration and, shifted, to the next control step. With white noise and no
+memory, the planner kept the object hovering 2 cm above the platform even
+though the model predicted that putting it down was better.
 """
 
 from __future__ import annotations
@@ -40,6 +47,9 @@ class CEMPlanner:
         collision_weight: float = 1.0,
         uncertainty_weight: float = 0.0,
         action_cost: float = 0.005,
+        noise_correlation: float = 0.0,
+        keep_elites: float = 0.0,
+        execute: str = "mean",
         seed: int = 0,
     ):
         self.model = model
@@ -48,13 +58,29 @@ class CEMPlanner:
         self.collision_weight = collision_weight
         self.uncertainty_weight = uncertainty_weight
         self.action_cost = action_cost
+        self.rho = noise_correlation
+        self.n_keep = int(round(keep_elites * elites))
+        self.execute = execute
         self.discounts = discount ** torch.arange(horizon, dtype=torch.float32)
         self.gen = torch.Generator().manual_seed(seed)
         self.reset()
 
     def reset(self) -> None:
         self.mean = torch.zeros(self.H, ACTION_DIM)
+        self.kept = torch.empty(0, self.H, ACTION_DIM)
         self.last_info: dict = {}
+
+    def _noise(self) -> torch.Tensor:
+        eps = torch.randn(self.N, self.H, ACTION_DIM, generator=self.gen)
+        if self.rho <= 0:
+            return eps
+        # AR(1) in time with unit marginal variance
+        noise = torch.empty_like(eps)
+        noise[:, 0] = eps[:, 0]
+        scale = (1 - self.rho**2) ** 0.5
+        for t in range(1, self.H):
+            noise[:, t] = self.rho * noise[:, t - 1] + scale * eps[:, t]
+        return noise
 
     @torch.no_grad()
     def evaluate(self, state: torch.Tensor, task: torch.Tensor, actions: torch.Tensor):
@@ -78,13 +104,16 @@ class CEMPlanner:
         g = torch.as_tensor(task, dtype=torch.float32).unsqueeze(0)
         mean = self.mean.clone()
         std = torch.full_like(mean, self.init_std)
+        kept = self.kept
         for _ in range(self.iterations):
-            noise = torch.randn(self.N, self.H, ACTION_DIM, generator=self.gen)
-            samples = (mean + std * noise).clamp(-1.0, 1.0)
+            samples = (mean + std * self._noise()).clamp(-1.0, 1.0)
             samples[0] = mean  # always keep the current mean as a candidate
+            if len(kept):
+                samples[1:1 + len(kept)] = kept
             score, terms = self.evaluate(s, g, samples)
             elite_idx = torch.topk(score, self.n_elites).indices
             elites = samples[elite_idx]
+            kept = elites[: self.n_keep]
             mean = self.momentum * mean + (1 - self.momentum) * elites.mean(0)
             std = (self.momentum * std + (1 - self.momentum) * elites.std(0)).clamp_min(self.min_std)
 
@@ -95,9 +124,12 @@ class CEMPlanner:
             uncertainty=float(terms["uncertainty"][best]),
             collision=float(terms["collision"][best]),
         )
-        # warm start: shift the solution by one step
-        self.mean = torch.cat([mean[1:], mean[-1:]], dim=0)
-        return mean[0].numpy()
+        plan = samples[best] if self.execute == "best" else mean
+        # warm start: shift the solution (and the kept elites) by one step
+        shift = lambda x: torch.cat([x[..., 1:, :], x[..., -1:, :]], dim=-2)
+        self.mean = shift(plan)
+        self.kept = shift(kept)
+        return plan[0].numpy()
 
 
 class MPCController:
