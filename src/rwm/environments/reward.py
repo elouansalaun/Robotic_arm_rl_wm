@@ -48,7 +48,9 @@ def _norm(x):
 
 
 def _sigmoid(x):
-    return 1.0 / (1.0 + (-x).exp()) if _is_torch(x) else 1.0 / (1.0 + np.exp(-x))
+    if _is_torch(x):
+        return x.sigmoid()
+    return 1.0 / (1.0 + np.exp(-np.clip(x, -60.0, 60.0)))
 
 
 def _float(cond, like):
