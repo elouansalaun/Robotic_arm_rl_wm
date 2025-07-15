@@ -157,13 +157,19 @@ def save_policy(model: SAC, path_stem: Path) -> None:
         np.savez(f"{path_stem}_obs_stats.npz", mean=venv.obs_rms.mean, var=venv.obs_rms.var)
 
 
-def _open_csv(path: Path, header: list[str], resume: bool):
-    """Open a log file, appending to it when a run is resumed. Returns (file, writer, last wall time)."""
+def _open_csv(path: Path, header: list[str], resume: bool, timestep: int = 0):
+    """Open a log file, appending to it when a run is resumed.
+
+    Rows logged after the snapshot we resume from are dropped, they will be logged again.
+    Returns (file, writer, wall time offset, previous rows).
+    """
     offset = 0.0
     if resume and path.exists() and path.stat().st_size > 0:
         import pandas as pd
 
         previous = pd.read_csv(path)
+        previous = previous[previous.timestep <= timestep]
+        previous.to_csv(path, index=False)
         offset = float(previous.wall_time.max()) if len(previous) else 0.0
         f = open(path, "a", newline="")
         return f, csv.writer(f), offset, previous
@@ -183,7 +189,7 @@ class TrainingLogger(BaseCallback):
 
     def _on_training_start(self) -> None:
         header = ["timestep", "wall_time", "return", "length", "success", "collision_steps", "place_error"]
-        self.file, self.writer, offset, _ = _open_csv(self.path, header, self.resume)
+        self.file, self.writer, offset, _ = _open_csv(self.path, header, self.resume, self.num_timesteps)
         self.t0 = time.time() - offset
 
     def _on_step(self) -> bool:
@@ -216,7 +222,8 @@ class ValidationCallback(BaseCallback):
 
     def _on_training_start(self) -> None:
         header = ["timestep", "wall_time", "success_rate", "mean_return", "collision_steps", "place_error"]
-        self.file, self.writer, offset, previous = _open_csv(self.run_dir / "validation.csv", header, self.resume)
+        self.file, self.writer, offset, previous = _open_csv(self.run_dir / "validation.csv", header, self.resume,
+                                                             self.num_timesteps)
         self.t0 = time.time() - offset
         if previous is not None and len(previous):
             self.best = float((previous.success_rate + 1e-3 * previous.mean_return).max())
