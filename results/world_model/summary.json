@@ -1,0 +1,25 @@
+{
+ "n_transitions": 118504,
+ "n_train": 94802,
+ "n_val": 11947,
+ "n_test": 11755,
+ "sources": [
+  "scripted",
+  "scripted_noisy",
+  "scripted_bursts",
+  "random",
+  "mpc",
+  "sac_checkpoint_150000",
+  "sac_checkpoint_75000",
+  "sac_best"
+ ],
+ "epochs": 26,
+ "best_val_mse": 0.221012145280838,
+ "log_spread_error_correlation": 0.758111848075193,
+ "data_files": [
+  "data/scripted.npz",
+  "data/random.npz",
+  "data/mpc_round1.npz",
+  "data/sac.npz"
+ ]
+}

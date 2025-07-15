@@ -21,7 +21,7 @@ def setup() -> None:
         "figure.facecolor": SURFACE, "axes.facecolor": SURFACE, "savefig.facecolor": SURFACE,
         "axes.edgecolor": AXIS, "axes.labelcolor": INK2, "axes.titlecolor": INK, "text.color": INK,
         "xtick.color": MUTED, "ytick.color": MUTED, "axes.grid": True, "grid.color": GRID, "grid.linewidth": 0.8,
-        "axes.spines.top": False, "axes.spines.right": False, "axes.titlesize": 11, "axes.titleweight": "semibold",
+        "axes.spines.top": False, "axes.spines.right": False, "axes.titlesize": 11, "axes.titleweight": "bold",
         "axes.labelsize": 9.5, "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 9,
         "legend.frameon": False, "lines.linewidth": 2, "lines.solid_capstyle": "round",
         "font.family": "sans-serif", "axes.axisbelow": True,
@@ -33,6 +33,7 @@ def learning_curves(runs: dict[str, list[pd.DataFrame]], ax=None):
     ax = ax or plt.gca()
     colors = ["#eb6834", "#898781"]
     for (label, frames), color in zip(runs.items(), colors):
+        frames = [f.drop_duplicates("timestep", keep="last") for f in frames]
         steps = frames[0].timestep.values
         y = np.stack([f.success_rate.values[: len(steps)] for f in frames])
         ax.fill_between(steps / 1e3, y.min(0), y.max(0), color=color, alpha=0.12, linewidth=0)
@@ -56,14 +57,14 @@ def success_bars(summary: pd.DataFrame, conditions: list[str], controllers: list
         err = np.vstack([y - rows.success_ci_low.values, rows.success_ci_high.values - y])
         ax.bar(pos, y, width * 0.88, color=COLORS[ctrl], label=NAMES[ctrl], zorder=2)
         ax.errorbar(pos, y, yerr=err, fmt="none", ecolor=INK2, elinewidth=1, capsize=2, zorder=3)
-        for p, v in zip(pos, y):
+        for p, v, top in zip(pos, y, rows.success_ci_high.values):
             if np.isfinite(v):
-                ax.text(p, v + 0.02, f"{100 * v:.0f}", ha="center", va="bottom", fontsize=7.5, color=INK2)
+                ax.text(p, top + 0.015, f"{100 * v:.0f}", ha="center", va="bottom", fontsize=7.5, color=INK2)
     ax.set_xticks(x, [c.replace("_", " ") for c in conditions])
-    ax.set_ylim(0, 1.12)
+    ax.set_ylim(0, 1.15)
     ax.set_ylabel("success rate (95% Wilson CI)")
     ax.grid(axis="x", visible=False)
-    ax.legend(ncol=n, loc="upper center", bbox_to_anchor=(0.5, 1.12))
+    ax.legend(ncol=n, loc="upper center", bbox_to_anchor=(0.5, 1.13))
     return ax
 
 
@@ -74,8 +75,10 @@ def multistep_error(errors: pd.DataFrame, feature: str, ax=None, title: str | No
     for contact, color, name in [(False, "#2a78d6", "free motion"), (True, "#eb6834", "contact with the object")]:
         g = d[d.contact == contact].sort_values("horizon")
         ax.plot(g.horizon, g.model_median, color=color, marker="o", markersize=5, label=f"model, {name}")
-        ax.plot(g.horizon, g.constant_median, color=color, linestyle=(0, (2, 2)), linewidth=1.2,
+        base = g[g.constant_median > 0.05]  # an untouched object does not move: that baseline is ~0
+        ax.plot(base.horizon, base.constant_median, color=color, linestyle=(0, (2, 2)), linewidth=1.2,
                 label=f"'nothing moves' baseline, {name}")
+    ax.set_yscale("log")
     ax.set_xlabel("prediction horizon (steps of 50 ms)")
     ax.set_ylabel(feature.replace("_", " "))
     ax.set_xticks(sorted(d.horizon.unique()))

@@ -1,6 +1,9 @@
 """MPC success as a function of the weight given to the ensemble disagreement.
 
-    python scripts/uncertainty_sweep.py --weights 0 0.02 0.05 0.1 0.2 0.5 --episodes 30
+    python scripts/uncertainty_sweep.py --weights 0.02 0.1 0.2 --episodes 50
+
+The weights already run by scripts/evaluate.py (mpc: 0, mpc_unc: 0.05) are
+taken from results/benchmark/ground_truth/ instead of being run again.
 """
 
 import argparse
@@ -19,9 +22,9 @@ from rwm.world_model.model import DynamicsEnsemble
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", nargs="+", type=float, default=[0.0, 0.02, 0.05, 0.1, 0.2, 0.5])
-    parser.add_argument("--conditions", nargs="+", default=["nominal", "heavy_slippery"])
-    parser.add_argument("--episodes", type=int, default=30)
+    parser.add_argument("--weights", nargs="+", type=float, default=[0.02, 0.1, 0.2])
+    parser.add_argument("--conditions", nargs="+", default=["nominal", "new_objects"])
+    parser.add_argument("--episodes", type=int, default=50)
     parser.add_argument("--world-model", type=Path, default=RESULTS_DIR / "world_model" / "ensemble.pt")
     args = parser.parse_args()
 
@@ -48,7 +51,17 @@ def main():
             print(f"{condition:15s} weight {w:<5g} success {df.success.mean():.2f} "
                   f"uncertainty {df.mean_uncertainty.mean():.2f}", flush=True)
 
-    summary = summarise(pd.read_csv(episodes_file), by=("condition", "uncertainty_weight"))
+    sweep = pd.read_csv(episodes_file)
+    bench_file = RESULTS_DIR / "benchmark" / "ground_truth" / "episodes.csv"
+    if bench_file.exists():
+        bench = pd.read_csv(bench_file)
+        weights = {"mpc": plan_cfg["uncertainty_weight"], "mpc_unc": plan_cfg["uncertainty_weight_penalized"]}
+        bench = bench[bench.controller.isin(weights) & bench.condition.isin(args.conditions)
+                      & (bench.episode < args.episodes)].copy()
+        bench["uncertainty_weight"] = bench.controller.map(weights)
+        sweep = pd.concat([sweep, bench[~bench.uncertainty_weight.isin(sweep.uncertainty_weight)]], ignore_index=True)
+    summary = summarise(sweep, by=("condition", "uncertainty_weight"))
+    summary = summary.sort_values(["condition", "uncertainty_weight"])
     summary.to_csv(out / "summary.csv", index=False)
     print(summary[["condition", "uncertainty_weight", "success_rate", "success_ci_low", "success_ci_high",
                    "collision_steps", "time_to_success_steps"]].round(3).to_string(index=False))

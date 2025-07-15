@@ -45,15 +45,15 @@ def world_model():
     errors = pd.read_csv(wm / "multistep_errors.csv")
     errors = errors[errors.contact.notna()]
     errors["contact"] = errors.contact.astype(str).str.lower() == "true"
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8), sharey=True)
     plots.multistep_error(errors, "obj_pos_mm", axes[0], "Object position")
     plots.multistep_error(errors, "tcp_pos_mm", axes[1], "Gripper (TCP) position")
-    axes[0].set_ylabel("median error (mm)")
+    axes[0].set_ylabel("median error, mm (log scale)")
     axes[1].set_ylabel("")
-    handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.12))
-    fig.suptitle("World model: open-loop prediction error on held-out episodes", x=0.02, ha="left",
-                 fontsize=11, fontweight="semibold")
+    handles, labels = axes[1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2, bbox_to_anchor=(0.5, -0.14))
+    fig.suptitle("World model: open-loop prediction error on held-out episodes", x=0.06, y=1.04, ha="left",
+                 fontsize=11.5, fontweight="bold")
     save(fig, "world_model_error.png")
 
     calib = pd.read_csv(wm / "uncertainty_vs_error.csv")
@@ -95,7 +95,12 @@ def perception():
         for line in bp[part]:
             line.set(color="#3987e5", linewidth=1)
     ax.set_xticks(range(1, len(cases) + 1), [f"{n}\n{c.replace('_', ' ')}" for c, n in cases])
-    ax.set_ylabel("object position error in the table plane (mm)")
+    ax.set_ylim(0, 6)
+    clutter_p95 = np.percentile(data[-1], 95)
+    ax.annotate(f"95th percentile: {clutter_p95:.0f} mm\n(object partly hidden)", xy=(len(cases), 5.9),
+                xytext=(len(cases) - 1.6, 4.6), fontsize=8, color=plots.INK2,
+                arrowprops=dict(arrowstyle="->", color=plots.MUTED, lw=1))
+    ax.set_ylabel("object position error\nin the table plane (mm)")
     ax.set_title("Camera localisation error (box: quartiles, whiskers: 5-95 %)", loc="left")
     ax.grid(axis="x", visible=False)
     save(fig, "perception_error.png")

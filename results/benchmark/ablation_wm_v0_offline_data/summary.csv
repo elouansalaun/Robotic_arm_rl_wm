@@ -1,0 +1,2 @@
+condition,controller,episodes,success_rate,success_ci_low,success_ci_high,place_error_mm,place_error_success_mm,collision_steps,episodes_with_collision,dropped,time_to_success_steps,time_to_success_ci,act_time_ms
+nominal,mpc,50,0.78,0.6475818431054045,0.8724621377569771,15.55040106177325,15.4431462287902,0.1,0.06,0.0,37.0,"[32.1, 42.5]",162.565876199015

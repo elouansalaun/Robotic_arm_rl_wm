@@ -15,7 +15,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from rwm.config import CONFIG_DIR, ROOT, load_config, scenario_config
+from rwm.config import CONFIG_DIR, RESULTS_DIR, ROOT, load_config, scenario_config
 from rwm.environments.pick_place_env import PickPlaceEnv
 from rwm.rl.sac import (ResumeCheckpoint, TrainingLogger, ValidationCallback, add_demonstrations, build_sac,
                         load_training_state, make_vec_env, save_policy, save_training_state)
@@ -74,7 +74,20 @@ def main():
     model.learn(total_timesteps=remaining, callback=callbacks, reset_num_timesteps=not args.resume)
     save_policy(model, run_dir / "model")
     save_training_state(model, run_dir / "resume")
+    export(run_dir)
     print(f"done in {(time.time() - t0) / 60:.1f} min -> {run_dir}")
+
+
+def export(run_dir: Path) -> None:
+    """Copy the logs and the selected policy to results/ (runs/ is not versioned)."""
+    logs = RESULTS_DIR / "rl"
+    logs.mkdir(parents=True, exist_ok=True)
+    shutil.copy(run_dir / "validation.csv", logs / f"{run_dir.name}_validation.csv")
+    shutil.copy(run_dir / "train_episodes.csv", logs / f"{run_dir.name}_train_episodes.csv")
+    ckpt = RESULTS_DIR / "checkpoints" / run_dir.name
+    ckpt.mkdir(parents=True, exist_ok=True)
+    for f in ("best.zip", "best_obs_stats.npz", "rl.yaml"):
+        shutil.copy(run_dir / f, ckpt / f)
 
 
 if __name__ == "__main__":
