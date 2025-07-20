@@ -33,6 +33,7 @@ class CameraStateEstimator:
         self.dt = dt
         self.n_renders = 0
         self.n_rejected = 0
+        self.n_skipped = 0
 
     # ------------------------------------------------------------- frames
     def observe(self, scene):
@@ -87,6 +88,8 @@ class CameraStateEstimator:
 
         if self.attached:
             self.pos = tcp - self.offset
+        elif np.linalg.norm(tcp - self.pos) < self.track_cfg["occlusion_distance"]:
+            self.n_skipped += 1  # our own gripper is in the way, keep the last estimate
         else:
             det, _, _ = self.observe(scene)
             self.last_detection = det
