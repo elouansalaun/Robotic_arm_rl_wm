@@ -18,7 +18,6 @@ the finger closing direction.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from itertools import product
 
 import numpy as np
 

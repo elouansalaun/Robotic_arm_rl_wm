@@ -29,7 +29,7 @@ def test_object_parameters_are_applied(scene):
     assert scene.model.body_mass[body] == pytest.approx(0.27)
     np.testing.assert_allclose(scene.model.geom_size[geom], [0.02, 0.03, 0.025])
     assert scene.model.geom_friction[geom, 0] == pytest.approx(0.7)
-    hx, hy, hz = 0.02, 0.03, 0.025
+    hy, hz = 0.03, 0.025
     assert scene.model.body_inertia[body][0] == pytest.approx(0.27 / 3 * (hy**2 + hz**2))
 
 
