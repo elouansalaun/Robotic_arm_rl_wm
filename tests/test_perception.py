@@ -77,3 +77,28 @@ def test_denoise_keeps_edges():
     out = denoise_depth(depth, 5)
     assert np.isfinite(out[5, 5]) and out[5, 5] == pytest.approx(1.0)
     assert out[10, 18] == pytest.approx(1.0) and out[10, 21] == pytest.approx(0.8)
+
+
+def test_estimator_tracks_object_and_skips_near_gripper():
+    from rwm.environments.state import SLICES, read_state
+    from rwm.perception.estimator import CameraStateEstimator
+
+    scene = PickPlaceScene()
+    est = CameraStateEstimator(scene.model, load_config("vision"), noise="realistic", seed=0)
+    sc = Scenario(object_kind="box", object_size=[0.02, 0.02, 0.02], object_xy=[0.5, -0.1], target_xy=[0.5, 0.15])
+    scene.reset(sc)
+    est.reset(scene)
+    truth = read_state(scene)
+    s = est.estimate(scene, truth)
+    assert np.linalg.norm(s[SLICES["obj_pos"]] - truth[SLICES["obj_pos"]]) < 0.005
+    np.testing.assert_allclose(est.task()[:3], scene.target_position(), atol=0.005)
+
+    # gripper (open) right above the object: the camera is not trusted, the estimate is kept
+    near = truth.copy()
+    near[SLICES["tcp_pos"]] = truth[SLICES["obj_pos"]] + [0.0, 0.0, 0.03]
+    near[SLICES["grip"]] = 0.09
+    before = est.pos.copy()
+    est.estimate(scene, near)
+    assert est.n_skipped == 1
+    np.testing.assert_array_equal(est.pos, before)
+    est.close()
