@@ -62,6 +62,7 @@ class CameraStateEstimator:
         self.yaw = yaw
         self.vel = np.zeros(3)
         self.expected_pixels = npix
+        self.reference_distance = self._camera_distance(scene, det_pos)
         self.attached = False
         self.offset = np.zeros(3)
         self.last_detection = det
@@ -69,27 +70,37 @@ class CameraStateEstimator:
     def task(self) -> np.ndarray:
         return self.task_estimate.copy()
 
-    def _held(self, tcp: np.ndarray, grip: float) -> bool:
-        half_w = self.task_estimate[4]
-        closed_on_object = 1.2 * half_w < grip < 2 * half_w + 0.008
-        return closed_on_object and np.linalg.norm(tcp - self.pos) < self.track_cfg["attach_distance"]
+    def _held(self, tcp: np.ndarray, grip: float, grip_vel: float) -> bool:
+        """Fingers stopped at the object width, around the estimated object.
+
+        The finger velocity matters: a gripper closing on nothing goes through the
+        object width on its way to fully closed, and with MPC (which sometimes pushes
+        the object away instead of grasping it) that transient was taken for a grasp.
+        """
+        width = 2 * self.task_estimate[4]
+        stopped_on_object = abs(grip - width) < 0.008 and abs(grip_vel) < 0.02
+        return stopped_on_object and np.linalg.norm(tcp - self.pos) < self.track_cfg["attach_distance"]
 
     def estimate(self, scene, true_state: np.ndarray) -> np.ndarray:
+        self._scene = scene
         s = true_state.copy()
         tcp = s[SLICES["tcp_pos"]].astype(float)
         grip = float(s[SLICES["grip"]][0])
+        grip_vel = float(s[SLICES["grip_vel"]][0])
+        width = 2 * self.task_estimate[4]
         prev = self.pos.copy()
 
-        if self.attached and grip > 2 * self.task_estimate[4] + 0.008:
-            self.attached = False  # gripper opened
-        if not self.attached and self._held(tcp, grip):
+        if self.attached and (grip > width + 0.008 or grip < width - 0.010):
+            self.attached = False  # gripper opened, or closed past the object: it is not in the hand
+        if not self.attached and self._held(tcp, grip, grip_vel):
             self.attached = True
             self.offset = tcp - self.pos
 
+        gripper_open_nearby = grip > width + 0.004 and np.linalg.norm(tcp - self.pos) < self.track_cfg["occlusion_distance"]
         if self.attached:
             self.pos = tcp - self.offset
-        elif np.linalg.norm(tcp - self.pos) < self.track_cfg["occlusion_distance"]:
-            self.n_skipped += 1  # our own gripper is in the way, keep the last estimate
+        elif gripper_open_nearby:
+            self.n_skipped += 1  # our own fingers are in the way, keep the last estimate
         else:
             det, _, _ = self.observe(scene)
             self.last_detection = det
@@ -111,9 +122,18 @@ class CameraStateEstimator:
         s[SLICES["obj_angvel"]] = 0.0
         return s
 
+    def _camera_distance(self, scene, point: np.ndarray) -> float:
+        cam_pos, _ = self.camera.extrinsics(scene.data)
+        return float(np.linalg.norm(point - cam_pos))
+
     def _plausible(self, det, prev: np.ndarray) -> bool:
-        """Reject partial views (occlusion by the gripper) and jumps."""
-        enough = det.n_pixels >= self.track_cfg["min_visible_fraction"] * self.expected_pixels
+        """Reject partial views (occlusion by the arm) and jumps.
+
+        A partly hidden object gives a biased centre, so the view has to be nearly
+        complete; the expected pixel count follows the distance to the camera.
+        """
+        scale = (self.reference_distance / self._camera_distance(self._scene, det.position)) ** 2
+        enough = det.n_pixels >= self.track_cfg["min_visible_fraction"] * self.expected_pixels * scale
         close = np.linalg.norm(det.position[:2] - prev[:2]) < 0.15
         return bool(enough and close)
 

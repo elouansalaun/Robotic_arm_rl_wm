@@ -26,7 +26,7 @@ tracking:
   attach_distance: 0.04       # object considered held when TCP is this close and the fingers are closed
   occlusion_distance: 0.08    # no camera update while the open gripper is this close to the object
   velocity_smoothing: 0.5
-  min_visible_fraction: 0.35  # partial views (occlusion) below this are not trusted
+  min_visible_fraction: 0.8   # partial views (occlusion by the arm) below this are not trusted
 
 # sensor imperfections used in the robustness experiments
 noise:
