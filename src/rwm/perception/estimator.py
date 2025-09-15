@@ -19,6 +19,21 @@ from rwm.robotics.kinematics import rot_z
 from rwm.simulation.scene import TABLE_Z
 
 
+def canonical_yaw(det) -> float:
+    """Pick one representative among the yaws that are equivalent for this shape.
+
+    The camera only sees the yaw modulo the symmetry of the object, the simulator
+    (and therefore everything trained on its states) uses one representative:
+    [-pi/4, pi/4) for square sections, 0 for round objects whose yaw is not
+    observable, the narrow axis in [-pi/2, pi/2) for elongated boxes.
+    """
+    if det.shape == "round":
+        return 0.0
+    if det.half_length < 1.15 * det.half_width:
+        return float((det.yaw + np.pi / 4) % (np.pi / 2) - np.pi / 4)
+    return float(det.yaw)
+
+
 class CameraStateEstimator:
     def __init__(self, model, vision_cfg: dict, noise: str = "clean", dt: float = 0.05, seed: int | None = None):
         cam = vision_cfg["camera"]
@@ -54,7 +69,7 @@ class CameraStateEstimator:
             # nothing found: aim at the middle of the workspace, the controller will fail honestly
             det_pos, yaw, half_h, half_w, npix = np.array([0.5, 0.0, TABLE_Z + 0.02]), 0.0, 0.02, 0.02, 1
         else:
-            det_pos, yaw, half_h, half_w, npix = det.position, det.yaw, det.half_height, det.half_width, det.n_pixels
+            det_pos, yaw, half_h, half_w, npix = det.position, canonical_yaw(det), det.half_height, det.half_width, det.n_pixels
         if target is None:
             target = np.array([0.5, 0.0, TABLE_Z + 0.02])
         self.task_estimate = np.array([*target, half_h, half_w], dtype=np.float32)
@@ -109,7 +124,7 @@ class CameraStateEstimator:
                 # so it stays right when the object sits on the platform
                 self.pos = np.array([det.position[0], det.position[1], det.z_top - self.task_estimate[3]])
                 if det.n_pixels > 0.7 * self.expected_pixels:
-                    self.yaw = det.yaw
+                    self.yaw = canonical_yaw(det)
             else:
                 self.n_rejected += 1
 

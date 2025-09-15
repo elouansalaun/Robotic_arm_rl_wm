@@ -118,12 +118,19 @@ def add_demonstrations(model: SAC, venv, sim_cfg: dict, n_episodes: int, noise: 
 
 
 class SACController:
-    """Deterministic SAC policy with the observation normalisation baked in."""
+    """Deterministic SAC policy with the observation normalisation baked in.
 
-    def __init__(self, model: SAC, obs_mean=None, obs_var=None, clip: float = 10.0):
+    The variance used for normalisation has a floor (1 mm, 1 mrad...): some
+    features never change during training (the platform height, the tilt of an
+    upright object), so their variance is ~0 and a 1 mm perception error was
+    turned into a 10-sigma input. On the training data the floor changes
+    nothing, those features were constant.
+    """
+
+    def __init__(self, model: SAC, obs_mean=None, obs_var=None, clip: float = 10.0, std_floor: float = 1e-3):
         self.model = model
         self.obs_mean = obs_mean
-        self.obs_var = obs_var
+        self.obs_std = None if obs_var is None else np.sqrt(np.maximum(obs_var, std_floor**2))
         self.clip = clip
 
     @classmethod
@@ -145,7 +152,7 @@ class SACController:
 
     def act(self, obs: np.ndarray) -> np.ndarray:
         if self.obs_mean is not None:
-            obs = np.clip((obs - self.obs_mean) / np.sqrt(self.obs_var + 1e-8), -self.clip, self.clip)
+            obs = np.clip((obs - self.obs_mean) / self.obs_std, -self.clip, self.clip)
         action, _ = self.model.predict(obs.astype(np.float32), deterministic=True)
         return action
 
