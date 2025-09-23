@@ -1,0 +1,23 @@
+batch_size: 256
+buffer_size: 400000
+checkpoint_fractions:
+- 0.25
+- 0.5
+demo_action_noise: 0.1
+demo_episodes: 100
+demo_fraction: 0.5
+ent_coef: auto
+eval_freq: 10000
+gamma: 0.98
+gradient_steps: 1
+learning_rate: 0.0003
+learning_starts: 5000
+n_eval_scenarios: 40
+net_arch:
+- 256
+- 256
+normalize_obs: true
+resume_every: 25000
+tau: 0.005
+total_timesteps: 300000
+train_freq: 1

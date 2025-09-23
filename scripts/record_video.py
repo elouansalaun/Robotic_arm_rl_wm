@@ -70,9 +70,9 @@ def main():
         video += [video[-1]] * 15
     args.out.parent.mkdir(parents=True, exist_ok=True)
     imageio.mimwrite(args.out, video, fps=20, quality=7, macro_block_size=8)
-    # lighter GIF for the README (GitHub plays GIFs inline): every other frame, 60 % size
-    small = [cv2.resize(f, None, fx=0.6, fy=0.6, interpolation=cv2.INTER_AREA) for f in video[::2]]
-    imageio.mimwrite(args.out.with_suffix(".gif"), small, duration=100, loop=0)
+    # lighter GIF for the README (GitHub plays GIFs inline): every third frame, half size
+    small = [cv2.resize(f, None, fx=0.5, fy=0.5, interpolation=cv2.INTER_AREA) for f in video[::3]]
+    imageio.mimwrite(args.out.with_suffix(".gif"), small, duration=150, loop=0)
     renderer.close()
     print(f"{len(video)} frames -> {args.out} (+ .gif)")
 

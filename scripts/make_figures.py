@@ -77,6 +77,36 @@ def benchmark():
     save(fig, "benchmark_success.png")
 
 
+def camera_vs_ground_truth():
+    gt_path = RESULTS_DIR / "benchmark" / "ground_truth" / "episodes.csv"
+    cam_path = RESULTS_DIR / "benchmark" / "camera_realistic" / "episodes.csv"
+    if not (gt_path.exists() and cam_path.exists()):
+        return
+    from rwm.evaluation.benchmark import summarise
+
+    gt = summarise(pd.read_csv(gt_path))
+    cam = summarise(pd.read_csv(cam_path))
+    gt, cam = gt[gt.condition == "nominal"], cam[cam.condition == "nominal"]
+    controllers = [c for c in ["scripted", "sac", "mpc", "mpc_unc"] if c in set(cam.controller)]
+    fig, ax = plt.subplots(figsize=(7.5, 3.6))
+    x = np.arange(len(controllers))
+    for offset, table, label, color in [(-0.2, gt, "ground-truth object state", "#86b6ef"),
+                                        (0.2, cam, "camera (realistic noise)", "#1c5cab")]:
+        rows = table.set_index("controller").reindex(controllers)
+        y = rows.success_rate.values
+        err = np.vstack([y - rows.success_ci_low.values, rows.success_ci_high.values - y])
+        ax.bar(x + offset, y, 0.36, color=color, label=label, zorder=2)
+        ax.errorbar(x + offset, y, yerr=err, fmt="none", ecolor=plots.INK2, elinewidth=1, capsize=2, zorder=3)
+        for xi, v, top in zip(x + offset, y, rows.success_ci_high.values):
+            ax.text(xi, top + 0.015, f"{100 * v:.0f}", ha="center", va="bottom", fontsize=8, color=plots.INK2)
+    ax.set_xticks(x, [plots.NAMES[c] for c in controllers])
+    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("success rate, nominal (95% CI)")
+    ax.grid(axis="x", visible=False)
+    ax.legend(ncol=2, loc="upper center", bbox_to_anchor=(0.5, 1.13))
+    save(fig, "camera_vs_ground_truth.png")
+
+
 def perception():
     path = RESULTS_DIR / "perception" / "localisation.csv"
     if not path.exists():
@@ -112,7 +142,8 @@ def uncertainty_sweep():
         return
     s = pd.read_csv(path)
     fig, ax = plt.subplots(figsize=(6, 3.6))
-    for cond, color in zip(s.condition.unique(), ["#2a78d6", "#eb6834"]):
+    conditions = [c for c in ["nominal", "new_objects", "new_positions", "heavy_slippery"] if c in set(s.condition)]
+    for cond, color in zip(conditions, ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]):
         g = s[s.condition == cond].sort_values("uncertainty_weight")
         x = np.arange(len(g))
         ax.plot(x, g.success_rate, color=color, marker="o", markersize=5, label=cond.replace("_", " "))
@@ -132,4 +163,5 @@ if __name__ == "__main__":
     world_model()
     benchmark()
     perception()
+    camera_vs_ground_truth()
     uncertainty_sweep()
