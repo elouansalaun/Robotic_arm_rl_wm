@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import matplotlib
-
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-import pandas as pd  # noqa: E402
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 # categorical order is fixed: a controller keeps its colour in every figure
 COLORS = {"scripted": "#2a78d6", "sac": "#eb6834", "mpc": "#1baf7a", "mpc_unc": "#eda100"}

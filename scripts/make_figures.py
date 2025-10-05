@@ -5,12 +5,15 @@
 
 import json
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+import matplotlib
 
-from rwm.config import RESULTS_DIR
-from rwm.evaluation import plots
+matplotlib.use("Agg")  # files only, no display needed
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+import pandas as pd  # noqa: E402
+
+from rwm.config import RESULTS_DIR  # noqa: E402
+from rwm.evaluation import plots  # noqa: E402
 
 FIG = RESULTS_DIR / "figures"
 
