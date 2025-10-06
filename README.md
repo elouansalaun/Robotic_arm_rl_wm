@@ -371,7 +371,7 @@ Kept here because most of the work was in these iterations.
 - **SAC blind with the camera (10 % instead of 90 %).** Replacing the estimate by ground truth piece by
   piece pointed at the task vector and the orientation, not at the position error. The platform height is
   the same in every training episode, so its variance in SAC's running normaliser was ~0 and a 1 mm
-  measurement error became a 10-sigma input; the same for the tilt of upright objects. A 1 mm floor on the
+  measurement error became a 10-sigma input. A 1 mm floor on the
   normalisation (no effect on anything that varied in training) and reporting the yaw of symmetric objects in
   the simulator's convention brought it back to 60 %.
 - **Data collection killed by the job time limit.** The first on-policy MPC run oversubscribed the two CPU
