@@ -1,6 +1,4 @@
 """Build the README figures from the CSV files in results/.
-
-    python scripts/make_figures.py
 """
 
 import json

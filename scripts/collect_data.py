@@ -1,10 +1,5 @@
 """Record (s, a, s') transitions for the world model.
 
-    python scripts/collect_data.py scripted            # -> data/scripted.npz
-    python scripts/collect_data.py random
-    python scripts/collect_data.py sac --run runs/sac/sac_demo_s0
-    python scripts/collect_data.py mpc --model results/world_model/ensemble.pt
-
 Each source is stored in its own file; scripts/train_world_model.py merges them.
 """
 

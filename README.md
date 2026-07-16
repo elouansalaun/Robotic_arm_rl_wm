@@ -35,17 +35,6 @@ Everything runs in MuJoCo on two CPU cores; no robot, no GPU.
   camera measures badly (velocities) or only up to a symmetry (the yaw of a cube). Getting there took three
   fixes to the state estimator that ground truth had hidden.
 
-## Contents
-
-1. [Simulation](#simulation)
-2. [Kinematics and scripted control](#kinematics-and-scripted-control)
-3. [Perception](#perception)
-4. [Reinforcement learning](#reinforcement-learning)
-5. [World model](#world-model)
-6. [Model predictive control](#model-predictive-control)
-7. [Benchmark](#benchmark)
-8. [What went wrong along the way](#what-went-wrong-along-the-way)
-9. [Reproducing](#reproducing)
 
 ## Simulation
 
@@ -384,53 +373,4 @@ Kept here because most of the work was in these iterations.
 - **Background jobs limited to two hours.** Runs are therefore resumable (SAC snapshots with the replay buffer,
   evaluation scripts that skip what is already in their CSV file).
 
-## Reproducing
 
-```bash
-pip install -e ".[dev]"                # Python >= 3.10: MuJoCo, PyTorch, SB3, OpenCV
-pytest                                 # 35 tests: kinematics vs MuJoCo, env API, perception, world model
-
-# the tables from the shipped checkpoints, no training needed (~2 h on one core, mostly MPC)
-python scripts/evaluate.py --world-model results/world_model/ensemble.pt \
-    --sac-runs results/checkpoints/sac_demo_s0 results/checkpoints/sac_demo_s1 results/checkpoints/sac_demo_s2
-python scripts/evaluate.py --observation camera --noise realistic --conditions nominal --sac-runs ...
-python scripts/evaluate_perception.py
-python scripts/uncertainty_sweep.py
-python scripts/make_figures.py && python scripts/make_tables.py
-python scripts/record_video.py --sac-run results/checkpoints/sac_demo_s0
-
-# everything from scratch
-python scripts/collect_data.py scripted && python scripts/collect_data.py random
-python scripts/train_rl.py --seed 0 --demo-episodes 100 --name sac_demo     # ~2.3 h, resumable with --resume
-python scripts/collect_data.py sac --run runs/sac/sac_demo_s0
-python scripts/train_world_model.py --data data/scripted.npz data/random.npz data/sac.npz --out runs/world_model_v1
-python scripts/collect_data.py mpc --model runs/world_model_v1/ensemble.pt --episodes 100 --out data/mpc_round1.npz
-python scripts/train_world_model.py --data data/*.npz                       # -> results/world_model/
-```
-
-On a Linux machine without a display, rendering needs `MUJOCO_GL=egl` (and `LP_NUM_THREADS=1` keeps Mesa's
-software renderer from competing with other jobs for the cores); on macOS the default backend works.
-
-Seeds: validation scenarios use seed 1000, test sets seed 2024 (+100 per condition) and are stored in
-`results/test_sets/`. Configurations are in `configs/`, and every SAC run copies the configs it used.
-Checkpoints used for the tables: `results/world_model/ensemble.pt` and `results/checkpoints/`.
-
-## Repository layout
-
-```
-configs/            simulation, vision, rl, world_model, planning
-assets/             MJCF: robot/, objects/, scenes/
-src/rwm/
-  simulation/       scene wrapper, scenario sampling, snapshots
-  robotics/         kinematics (FK, Jacobian, closed-form and DLS IK), controllers
-  perception/       camera model, segmentation and pose, noise, state estimator
-  environments/     Gymnasium env, state layout, reward
-  rl/               SAC setup, demo buffer, logging, resumable training
-  world_model/      transition dataset, ensemble, training, multi-step evaluation
-  planning/         CEM model predictive control
-  evaluation/       rollouts, benchmark statistics, perception metrics, plots
-scripts/            entry points (collect, train, evaluate, figures, video)
-tests/              pytest
-results/            CSV results, figures, video, test sets, checkpoints
-notebooks/          analysis of the result files
-```

@@ -1,6 +1,4 @@
 """Markdown tables for the README, generated from the CSV files in results/.
-
-    python scripts/make_tables.py        # -> results/tables.md
 """
 
 import json

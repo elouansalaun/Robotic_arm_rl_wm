@@ -1,7 +1,5 @@
 """MPC success as a function of the weight given to the ensemble disagreement.
 
-    python scripts/uncertainty_sweep.py --weights 0.02 0.1 0.2 --episodes 50
-
 The weights already run by scripts/evaluate.py (mpc: 0, mpc_unc: 0.05) are
 taken from results/benchmark/ground_truth/ instead of being run again.
 """

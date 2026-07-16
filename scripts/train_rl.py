@@ -1,10 +1,4 @@
 """Train the SAC baseline.
-
-    python scripts/train_rl.py --seed 0 --demo-episodes 100 --name sac_demo
-    python scripts/train_rl.py --seed 0 --name sac_demo --resume     # continue an interrupted run
-
-A full training snapshot is written every `resume_every` steps (configs/rl.yaml),
-so a run that gets stopped loses at most that many steps.
 """
 
 import argparse

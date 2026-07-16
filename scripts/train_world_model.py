@@ -1,6 +1,5 @@
 """Train the dynamics ensemble and measure its multi-step prediction error.
 
-    python scripts/train_world_model.py --data data/scripted.npz data/random.npz data/sac.npz
 """
 
 import argparse

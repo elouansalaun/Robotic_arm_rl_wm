@@ -1,9 +1,5 @@
 """Compare the controllers on the fixed test sets.
 
-    python scripts/evaluate.py --controllers scripted sac mpc mpc_unc \\
-        --sac-runs runs/sac/sac_demo_s0 runs/sac/sac_demo_s1 runs/sac/sac_demo_s2 \\
-        --world-model results/world_model/ensemble.pt --episodes 50
-
     # camera instead of ground-truth object pose
     MUJOCO_GL=egl python scripts/evaluate.py --observation camera --noise realistic ...
 
